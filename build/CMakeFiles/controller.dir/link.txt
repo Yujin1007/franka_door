@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -flto -shared  -o controller.cpython-38-x86_64-linux-gnu.so CMakeFiles/controller.dir/simulate/controller.cpp.o  libfranka_emika_lib_py.a -lrbdl -lrbdl_urdfreader 
