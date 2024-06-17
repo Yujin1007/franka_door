@@ -1297,6 +1297,8 @@ class door_env:
         self.goal_done = False
         self.action_rotation_pre = np.zeros(2)
 
+        self.command_data = []
+
         obs = self._observation()
         while self.control_mode != RL_CIRCULAR_CONTROL:
             self.control_mode = self.controller.control_mode()
@@ -1353,7 +1355,7 @@ class door_env:
                 self.controller.put_action(ddrollpitchdot_tmp, action_force)
             if duration == 10:
                 break
-
+            self.command_data.append(self.controller.get_commands())
             self.controller.control_mujoco()
             self._torque, _ = self.controller.write()
             for i in range(self.dof - 1):
@@ -1413,7 +1415,8 @@ class door_env:
         q_max = max(abs(self.obs_q))
         if q_max > 0.9:
             if action_force < 0:
-                reward_force += 1
+                reward_force += 2
+                # reward_force += 1
         else:
             if 0.1 <= abs(self.obs_omega[0]) <= 0.15:
                 reward_force += 1
@@ -1438,7 +1441,7 @@ class door_env:
         reward_acc = -sum(abs(action_rotation - self.action_rotation_pre))
         # print(reward_rotation, ", ", reward_acc, ",  ", reward_rotation + reward_acc)
         # print(abs(self.data.qvel[:7]).sum(), reward_rotation+reward_acc, reward_force)
-        return reward_rotation+reward_acc+reward_qvel, reward_force+reward_qvel
+        return reward_rotation + reward_acc + reward_qvel, reward_force + reward_qvel
 
     def _done(self):
 

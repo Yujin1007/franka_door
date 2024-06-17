@@ -35,7 +35,8 @@ public:
     void put_action_pybind(array<double, 2> action_rotation, double action_force);
     
     tuple<array<double,2>, double> get_actions_pybind();
-    tuple<array<double,2>, double> get_commands_pybind();
+    // tuple<array<double,2>, double> get_commands_pybind();
+    array<double, 6> get_commands_pybind();
     // void put_action_pybind(std::array<double, 2> action);
 
     // void put_action2_pybind(std::array<double, 2> action);
@@ -79,7 +80,7 @@ private:
     void motionPlan_Heuristic(const char* object, double init_theta, double goal_theta);
     
     void motionPlan_RL(string object);
-
+    double lpf(double input, double previousOutput, double alpha);
     struct Robot{
 		int id;
 		Vector3d pos;
@@ -277,7 +278,7 @@ private:
     Vector3d _v2ei_vector, _v2ef_vector;
 
     double _dtheta, _dtheta_des;
-    double _force_gain, _dforce_gain;
+    double _force_gain, _dforce_gain, _rforce_gain;
     double _roll, _pitch, _droll, _dpitch, _ddroll, _ddpitch;
     double _kf;
     double _q_valve, _qdot_valve;

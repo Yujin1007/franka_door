@@ -41,6 +41,7 @@ def main(PATH, TRAIN, OFFLINE, RENDERING):
     save_freq = 1e5
     models_dir = PATH
     pretrained_model_dir = models_dir + "6.0/" # 6.0 : 6.4 , 5: 5.7
+    # pretrained_model_dir = models_dir + "10.0/" # 6.0 : 6.4 , 5: 5.7
     episode_data = []
     save_flag = False
 
@@ -200,9 +201,28 @@ def main(PATH, TRAIN, OFFLINE, RENDERING):
             print("time:",env.time_done, "  contact:",env.contact_done, "  bound:",env.bound_done,
                   "  goal:", env.goal_done)
             print(env.door_angle)
+
+            fig, axs = plt.subplots(3, 2, figsize=(8, 6))
+            axs[0, 0].plot([sublist[0] for sublist in env.command_data])
+            axs[0, 0].set_title("droll", pad=20)
+
+            axs[0, 1].plot([sublist[1] for sublist in env.command_data])
+            axs[0, 1].set_title("dpitch", pad=20)
+
+            axs[1, 0].plot([sublist[2] for sublist in env.command_data])
+            axs[1, 0].set_title("roll", pad=20)
+
+            axs[1, 1].plot([sublist[3] for sublist in env.command_data])
+            axs[1, 1].set_title("pitch", pad=20)
+
+            axs[2, 0].plot([sublist[4] for sublist in env.command_data])
+            axs[2, 0].set_title("force gain", pad=20)
+
+            axs[2, 1].plot([sublist[5] for sublist in env.command_data])
+            axs[2, 1].set_title("R force gain", pad=20)
             # plt.plot(force_data,  linestyle='-', color='b')
             # # plt.title(env.friction)
-            # plt.show()
+            plt.show()
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser = argparse.ArgumentParser(description="wo expert demo, first door training, ")

@@ -92,13 +92,17 @@ tuple<std::vector<double>, double> CController::write_pybind()
 
 void CController::put_action_pybind(array<double, 2> action_rotation, double action_force)
 {
-	_ddroll = action_rotation[0];
-	_ddpitch = action_rotation[1];
+	_ddroll = lpf(action_rotation[0], _ddroll, 0.1);
+	_ddpitch = lpf(action_rotation[1],_ddpitch, 0.1);
 	_droll = _droll + _ddroll * _dt;
 	_dpitch = _dpitch + _ddpitch * _dt;
 	_roll = _roll + _droll * _dt;
 	_pitch = _pitch + _dpitch * _dt;
-	_dforce_gain = action_force * 0.1; // -1 or 0 or 1
+	_dforce_gain = lpf(action_force * 0.1, _dforce_gain, 0.1); // -1 or 0 or 1
+}
+
+double CController::lpf(double input, double previousOutput, double alpha) {
+    return alpha * input + (1.0 - alpha) * previousOutput;
 }
 
 // void CController::randomize_env_pybind(std::array<std::array<double, 3>, 3> rotation_obj, std::string object_name, int scale, std::array<double, 66> pos, double init_theta, double goal_theta, int planning_mode, bool generate_dxyz)
@@ -127,6 +131,11 @@ void CController::put_action_pybind(array<double, 2> action_rotation, double act
 // 	}
 // 	// _handle_valve(1) += 0.02;
 // }
+array<double, 6> CController::get_commands_pybind(){
+	array<double, 6> commands = {_droll, _dpitch, _roll, _pitch, _force_gain, _rforce_gain};
+	return commands;
+}
+
 tuple<std::vector<double>, std::vector<double>> CController::get_force_pybind()
 {
 	torque_command.clear();
@@ -257,14 +266,14 @@ tuple<array<double, 2>, double> CController::get_actions_pybind()
 
 	return make_tuple(action_rotation, action_force);
 }
-tuple<array<double, 2>, double> CController::get_commands_pybind()
-{
-	array<double, 2> action_rotation;
-	double action_force = _force_gain;
-	action_rotation = {_roll, _pitch};
+// tuple<array<double, 2>, double> CController::get_commands_pybind()
+// {
+// 	array<double, 2> action_rotation;
+// 	double action_force = _force_gain;
+// 	action_rotation = {_roll, _pitch};
 
-	return make_tuple(action_rotation, action_force);
-}
+// 	return make_tuple(action_rotation, action_force);
+// }
 
 array<double, 16> CController::relative_T_hand_pybind()
 {
@@ -1618,7 +1627,7 @@ void CController::HybridControl()
 					force_gain = _force_gain * _kf;
 				}
 			}
-
+			_rforce_gain = force_gain;
 			// cout<<"force gain: "<<_force_gain<<"  calc_gain:"<<force_gain<<endl;
 			if (_goal_theta > _init_theta)
 			{
@@ -1944,12 +1953,12 @@ PYBIND11_MODULE(controller, m)
 		.def("get_model", &CController::get_model_pybind)
 		.def("control_mode", &CController::control_mode_pybind)
 		.def("desired_rpy", &CController::desired_rpy_pybind)
-		.def("get_force", &CController::get_force_pybind)
+		.def("get_commands", &CController::get_commands_pybind)
 		// .def("target_replan", &CController::TargetRePlan_pybind)
 		// .def("target_replan2", &CController::TargetRePlan2_pybind)
 		// .def("target_replan3", &CController::TargetRePlan3_pybind)
-		.def("get_action", &CController::get_actions_pybind)
-		.def("get_commands", &CController::get_commands_pybind);
+		.def("get_action", &CController::get_actions_pybind);
+		// .def("get_commands", &CController::get_commands_pybind);
 
 	//   .def("write", &CController::write);
 
