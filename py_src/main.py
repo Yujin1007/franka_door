@@ -24,7 +24,7 @@ RL = 1
 
 
 def main(PATH, TRAIN, OFFLINE, RENDERING):
-    env = fr3Env.door_env()
+    env = fr3Env.door_env2()
     env.env_rand =False
     env.rendering = RENDERING
     PLANNING_MODE = RL
@@ -40,7 +40,7 @@ def main(PATH, TRAIN, OFFLINE, RENDERING):
     policy_kwargs = dict(n_critics=5, n_quantiles=25)
     save_freq = 1e5
     models_dir = PATH
-    pretrained_model_dir = models_dir + "6.0/" # 6.0 : 6.4 , 5: 5.7
+    pretrained_model_dir = models_dir + "8.0/" # 6.0 : 6.4 , 5: 5.7
     # pretrained_model_dir = models_dir + "10.0/" # 6.0 : 6.4 , 5: 5.7
     episode_data = []
     save_flag = False
@@ -96,6 +96,8 @@ def main(PATH, TRAIN, OFFLINE, RENDERING):
 
         actor1.train()
         actor2.train()
+        return_rotation_max = 100
+        return_force_max = 100
         for t in range(int(max_timesteps)):
 
             action_rotation = actor1.select_action(state)
@@ -128,9 +130,16 @@ def main(PATH, TRAIN, OFFLINE, RENDERING):
                 # +1 to account for 0 indexing. +0 on ep_timesteps since it will increment +1 even if done=True
                 print(
                     f"Total T: {t + 1} Episode Num: {episode_num + 1} Episode T: {episode_timesteps} "
-                    f"Reward R: {episode_return_rotation:.3f} Reward F: {episode_return_force:.3f}")
+                    f"Reward R: {episode_return_rotation:.3f} Reward F: {episode_return_force:.3f}" f"Best R: {return_rotation_max:.3f} Best F: {return_force_max:.3f}")
 
 
+                if t > save_freq and episode_return_rotation > return_rotation_max and episode_return_force > return_force_max:
+                    return_rotation_max = episode_return_rotation
+                    return_force_max = episode_return_force
+                    path1 = models_dir + "best/rotation/"
+                    path2 = models_dir + "best/force/"
+                    trainer1.save(path1)
+                    trainer2.save(path2)
                 # Reset environment
                 state = env.reset(PLANNING_MODE)
                 episode_data.append([episode_num, episode_timesteps, episode_return_rotation, episode_return_force])
@@ -138,15 +147,10 @@ def main(PATH, TRAIN, OFFLINE, RENDERING):
                 episode_return_force = 0
                 episode_timesteps = 0
                 episode_num += 1
+
             if save_flag:
                 path1 = models_dir + str((t + 1) // save_freq) + "/rotation/"
                 path2 = models_dir + str((t + 1) // save_freq) + "/force/"
-                os.makedirs(path1, exist_ok=True)
-                os.makedirs(path2, exist_ok=True)
-                if not os.path.exists(path1):
-                    os.makedirs(path1)
-                if not os.path.exists(path2):
-                    os.makedirs(path2)
                 trainer1.save(path1)
                 trainer2.save(path2)
 
@@ -169,6 +173,7 @@ def main(PATH, TRAIN, OFFLINE, RENDERING):
         # reset_agent.training = False
         num_ep = 16
         force_data = []
+        reward_data = []
         # env.episode_number = 3
         # df = pd.read_csv("/home/kist-robot2/Downloads/obs_real.csv")
         # states = df.to_numpy(dtype=np.float32)
@@ -187,6 +192,7 @@ def main(PATH, TRAIN, OFFLINE, RENDERING):
 
                 next_state, reward_rotation, reward_force, done, _ = env.step(action_rotation, action_force)
                 force_data.append(env.force)
+                reward_data.append([reward_rotation, reward_force])
 
                 state = next_state
                 episode_return_rotation += reward_rotation
@@ -220,19 +226,25 @@ def main(PATH, TRAIN, OFFLINE, RENDERING):
 
             axs[2, 1].plot([sublist[5] for sublist in env.command_data])
             axs[2, 1].set_title("R force gain", pad=20)
+
+            fig2, axs2 = plt.subplots(1, 2, figsize=(8, 6))
+            axs2[0].plot([sublist[0] for sublist in reward_data])
+            axs2[0].set_title("reward_rotation", pad=20)
+
+            axs2[1].plot([sublist[1] for sublist in reward_data])
+            axs2[1].set_title("reward_force", pad=20)
             # plt.plot(force_data,  linestyle='-', color='b')
             # # plt.title(env.friction)
             plt.show()
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser = argparse.ArgumentParser(description="wo expert demo, first door training, ")
+    parser.add_argument("--description", help="description")
     parser.add_argument("--path", help="data load path", default=" ./log/0607_1/")
     parser.add_argument("--train", help="0->test,  1->train", type=int, default=1)
     parser.add_argument("--render", help="0->no rendering,  1->rendering", type=int, default=0)
     parser.add_argument("--offline", help="0->no offline data,  1->with offline data", type=int, default=0)
     args = parser.parse_args()
     args_dict = vars(args)
-    args_dict['description'] = parser.description
     if args.train == 1:
         os.makedirs(args.path, exist_ok=True)
         if not os.path.exists(args.path):
