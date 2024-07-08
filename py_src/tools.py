@@ -226,3 +226,7 @@ def get_T_ab(T_a, T_b):
     T_rel = np.dot(T_a_inv, T_b)
 
     return T_rel
+
+def lpf(_input, _input_pre, alpha=0.5):
+
+    return alpha * _input + (1.0 - alpha) * _input_pre;

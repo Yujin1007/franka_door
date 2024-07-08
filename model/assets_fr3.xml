@@ -157,7 +157,6 @@
 
     <contact>
         <exclude name="gripper_contact" body1="left_finger" body2="right_finger"/>
-
         <!-- <exclude name="panda_check_targetpos0" body1="left_finger" body2="handle_base"/>
         <exclude name="panda_check_targetpos1" body1="right_finger" body2="handle_base"/>
         <exclude name="panda_check_targetpos2" body1="link7" body2="handle_base"/>

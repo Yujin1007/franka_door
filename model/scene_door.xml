@@ -1,6 +1,6 @@
 <mujoco model='Panda_valve'>
     <!-- ======= WORLD ======= -->
-    <option timestep = '0.001'/>
+    <option timestep = '0.001' impratio="10"/>
     <worldbody>
         <light directional='false' diffuse='.7 .7 .7' specular='0.03 0.03 0.03' pos='-1 -1.0 4.0' dir='1 1.0 -4'/>
         <geom name='ground' size="1.5 1.5 0.25" pos="0 0 0" type="plane" contype="1" conaffinity="0"/>

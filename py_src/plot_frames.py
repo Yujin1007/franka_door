@@ -71,33 +71,33 @@ def bring_data(xyz,rot, interval=300):
     return data_points
 
 # Call the function to plot the data
-# xyz1 = np.load("demonstration/rl_frame_xyz.npy")
-# rot1 = np.load("demonstration/rl_frame_rpy.npy")
-# data_points1 = bring_data(xyz1, rot1)
-# xyz2 = np.load("./demonstration/manual_frame_xyz.npy")
-# rot2 = np.load("./demonstration/manual_frame_rpy.npy")
-# data_points2 = bring_data(xyz2, rot2)
+xyz1 = np.load("./data/xyz_data.npy")
+rot1 = np.load("data/rpy_data.npy")
+data_points1 = bring_data(xyz1, rot1, interval=500)
+xyz2 = np.load("./data/heuristic_xyz_data.npy")
+rot2 = np.load("./data/heuristic_rpy_data.npy")
+data_points2 = bring_data(xyz2, rot2, interval=500)
 
-df = pd.read_csv("./data/compare_dynamics/x_hand_oldxml.csv")
-data = df.to_numpy(dtype=np.float32)
-xyz_old = data[:, 0:3]
-euler_old = data[:, 3:6]
-rot_old = R.from_euler("xyz", euler_old).as_matrix()
-dp_old = bring_data(xyz_old, rot_old, interval=250)
-plot_data(dp_old, "x hand, simulation")
+# df = pd.read_csv("./data/compare_dynamics/x_hand_oldxml.csv")
+# data = df.to_numpy(dtype=np.float32)
+# xyz_old = data[:, 0:3]
+# euler_old = data[:, 3:6]
+# rot_old = R.from_euler("xyz", euler_old).as_matrix()
+# dp_old = bring_data(xyz_old, rot_old, interval=250)
+# plot_data(dp_old, "x hand, simulation")
+#
+# df = pd.read_csv("./data/compare_dynamics/x_hand_real.csv")
+# data = df.to_numpy(dtype=np.float32)
+# xyz_real = data[:len(data), 0:3]
+# euler_real = data[:len(data), 3:6]
+# rot_real = R.from_euler("xyz", euler_real).as_matrix()
+# dp_real = bring_data(xyz_real, rot_real, interval=250)
+# plot_data(dp_real, "x hand real world")
 
-df = pd.read_csv("./data/compare_dynamics/x_hand_real.csv")
-data = df.to_numpy(dtype=np.float32)
-xyz_real = data[:len(data), 0:3]
-euler_real = data[:len(data), 3:6]
-rot_real = R.from_euler("xyz", euler_real).as_matrix()
-dp_real = bring_data(xyz_real, rot_real, interval=250)
-plot_data(dp_real, "x hand real world")
 
 
-
-# plot_data(data_points1)
-# plot_data(data_points2)
+plot_data(data_points1)
+plot_data(data_points2)
 
 # sx = []
 # sy = []

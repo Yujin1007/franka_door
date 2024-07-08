@@ -93,16 +93,18 @@ tuple<std::vector<double>, double> CController::write_pybind()
 void CController::put_action_pybind(array<double, 2> action_rotation, double action_force)
 {
 	_ddroll = lpf(action_rotation[0], _ddroll, 0.1);
-	_ddpitch = lpf(action_rotation[1],_ddpitch, 0.1);
+	_ddpitch = lpf(action_rotation[1], _ddpitch, 0.1);
 	_droll = _droll + _ddroll * _dt;
 	_dpitch = _dpitch + _ddpitch * _dt;
 	_roll = _roll + _droll * _dt;
 	_pitch = _pitch + _dpitch * _dt;
 	_dforce_gain = lpf(action_force * 0.1, _dforce_gain, 0.1); // -1 or 0 or 1
+	// _dforce_gain = action_force;
 }
 
-double CController::lpf(double input, double previousOutput, double alpha) {
-    return alpha * input + (1.0 - alpha) * previousOutput;
+double CController::lpf(double input, double previousOutput, double alpha)
+{
+	return alpha * input + (1.0 - alpha) * previousOutput;
 }
 
 // void CController::randomize_env_pybind(std::array<std::array<double, 3>, 3> rotation_obj, std::string object_name, int scale, std::array<double, 66> pos, double init_theta, double goal_theta, int planning_mode, bool generate_dxyz)
@@ -131,7 +133,8 @@ double CController::lpf(double input, double previousOutput, double alpha) {
 // 	}
 // 	// _handle_valve(1) += 0.02;
 // }
-array<double, 6> CController::get_commands_pybind(){
+array<double, 6> CController::get_commands_pybind()
+{
 	array<double, 6> commands = {_droll, _dpitch, _roll, _pitch, _force_gain, _rforce_gain};
 	return commands;
 }
@@ -492,7 +495,7 @@ void CController::control_mujoco()
 			CircularTrajectory.update_goal(_end_time, _init_theta, _goal_theta, _x_hand.head(3), 0); // _init_theta = 0 -> change to learned result later
 			CircularTrajectory2.reset_initial(_start_time, -_grab_vector, -_normal_vector, _obj.origin, sqrt(pow(_radius, 2) + pow(0.15, 2)), _Tvr, _dt);
 			CircularTrajectory2.update_goal(_end_time, M_PI_2, _goal_theta, _x_hand.head(3), 1); // _init_theta = 0 -> change to learned result later
-
+			// cout<<"x hand:"<<_x_hand.transpose()<<endl;
 			_bool_ee_motion = true;
 			_x_des_hand = _x_hand;
 
@@ -518,7 +521,7 @@ void CController::control_mujoco()
 		}
 		else if (_planning_mode == 0)
 		{
-			
+
 			_pitch = 0.0;
 			_roll = 0.0;
 			if (abs(_qdot_door) < abs(0.1) * 1)
@@ -537,16 +540,22 @@ void CController::control_mujoco()
 				_force_gain += _dforce_gain * 0.1;
 			}
 			// cout<<"_Force gain:"<<_force_gain<<"  ";
-			// VectorXd min_q(7), max_q(7), scaled_q(7);
-			// min_q << -2.7437, -1.7837, -2.9007, -3.0421, -2.8065, 0.5445, -3.0159;
-			// max_q << 2.7437, 1.7837, 2.9007, -0.1518, 2.8065, 4.5169, 3.0159;
-			// scaled_q << ((_q - min_q).cwiseQuotient(max_q - min_q) * (1 - (-1))).array() - 1;
-			// if (scaled_q.cwiseAbs().maxCoeff() > 0.92)
-			// {
-			// 	_dforce_gain = -10;
-			// 	_force_gain += _dforce_gain * 0.1;
-			// }
+			VectorXd min_q(7), max_q(7), scaled_q(7);
+			min_q << -2.7437, -1.7837, -2.9007, -3.0421, -2.8065, 0.5445, -3.0159;
+			max_q << 2.7437, 1.7837, 2.9007, -0.1518, 2.8065, 4.5169, 3.0159;
+			scaled_q << ((_q - min_q).cwiseQuotient(max_q - min_q) * (1 - (-1))).array() - 1;
+			if (scaled_q.cwiseAbs().maxCoeff() > 0.92)
+			{
+				_dforce_gain = -10;
+				_force_gain += _dforce_gain * 0.1;
+			}
 		}
+		
+		if (_force_gain < 0.0)
+		{
+			_force_gain = 0.0;
+		}
+
 		// _theta_des = CircularTrajectory.update_time(_t);
 		Vector3d dx(3);
 		dx << _x_hand.head(3) - _obj.origin;
@@ -566,8 +575,7 @@ void CController::control_mujoco()
 		CircularTrajectory.update_theta(_init_theta + _dtheta);
 		_x_des_hand.head(3) = CircularTrajectory.position_circular();
 		_xdot_des_hand.head(3) = CircularTrajectory.velocity_circular();
-		
-		
+		// cout<<"_x_des_hand :"<<_x_des_hand.head(3).transpose()<<" x_hand: "<<_x_hand.head(3).transpose()<<endl;
 
 		if (_force_gain < 0.0)
 		{
@@ -1265,7 +1273,7 @@ void CController::motionPlan()
 
 		robot_base.pos << _robot_base;
 		robot_base.zrot = 0; // M_PI;
-		robot_base.ee_align = DEG2RAD * (45-180);
+		robot_base.ee_align = DEG2RAD * (45 - 180);
 
 		latch.name = "LATCH";
 		latch.o_margin << 0, 0, 0.0000001;
@@ -1293,7 +1301,7 @@ void CController::motionPlan()
 		// _x_hand : 0.349787 -0.100012  0.644271   1.57145  0.797496   1.58246
 		door.pos << _position_door;
 
-		_gripper_close = 0.00;
+		_gripper_close = 0.005;
 
 		door.origin = door.pos;
 
@@ -1958,7 +1966,7 @@ PYBIND11_MODULE(controller, m)
 		// .def("target_replan2", &CController::TargetRePlan2_pybind)
 		// .def("target_replan3", &CController::TargetRePlan3_pybind)
 		.def("get_action", &CController::get_actions_pybind);
-		// .def("get_commands", &CController::get_commands_pybind);
+	// .def("get_commands", &CController::get_commands_pybind);
 
 	//   .def("write", &CController::write);
 

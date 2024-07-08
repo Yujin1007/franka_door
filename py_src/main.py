@@ -40,9 +40,10 @@ def main(PATH, TRAIN, OFFLINE, RENDERING):
     policy_kwargs = dict(n_critics=5, n_quantiles=25)
     save_freq = 1e5
     models_dir = PATH
-    pretrained_model_dir = models_dir + "8.0/" # 6.0 : 6.4 , 5: 5.7
+    pretrained_model_dir = models_dir #+ "8.0/" # 6.0 : 6.4 , 5: 5.7
     # pretrained_model_dir = models_dir + "10.0/" # 6.0 : 6.4 , 5: 5.7
     episode_data = []
+    timestep_data = []
     save_flag = False
 
     state_dim = env.observation_space.shape
@@ -143,10 +144,21 @@ def main(PATH, TRAIN, OFFLINE, RENDERING):
                 # Reset environment
                 state = env.reset(PLANNING_MODE)
                 episode_data.append([episode_num, episode_timesteps, episode_return_rotation, episode_return_force])
+                episode_return_rotation_accum += episode_return_rotation
+                episode_return_force_accum += episode_return_force
+                episode_cnt += 1
+
                 episode_return_rotation = 0
                 episode_return_force = 0
                 episode_timesteps = 0
                 episode_num += 1
+            if (t + 1) % 10000 == 0:
+                timestep_data.append(
+                    [episode_return_rotation_accum / episode_cnt, episode_return_force_accum / episode_cnt])
+                episode_return_rotation_accum = 0
+                episode_return_force_accum = 0
+                episode_cnt = 0
+                np.save(models_dir + "avg_reward.npy", timestep_data)
 
             if save_flag:
                 path1 = models_dir + str((t + 1) // save_freq) + "/rotation/"
@@ -171,7 +183,7 @@ def main(PATH, TRAIN, OFFLINE, RENDERING):
         actor2.training = False
 
         # reset_agent.training = False
-        num_ep = 16
+        num_ep = 2
         force_data = []
         reward_data = []
         # env.episode_number = 3
@@ -207,6 +219,8 @@ def main(PATH, TRAIN, OFFLINE, RENDERING):
             print("time:",env.time_done, "  contact:",env.contact_done, "  bound:",env.bound_done,
                   "  goal:", env.goal_done)
             print(env.door_angle)
+            # np.save("./data/heuristic_rpy_data.npy",env.rpyfromvalve_data)
+            # np.save("./data/heuristic_xyz_data.npy",env.xyzfromvalve_data )
 
             fig, axs = plt.subplots(3, 2, figsize=(8, 6))
             axs[0, 0].plot([sublist[0] for sublist in env.command_data])

@@ -1265,6 +1265,8 @@ class door_template:
         self.door_body_idx = mujoco.mj_name2id(self.model, BODY, "hinge_axis")
         self.latch_body_idx = mujoco.mj_name2id(self.model, BODY, "latch_axis")
         self.latch_info, self.door_info = self.env_information()
+        self.rpyfromvalve_data = []
+        self.xyzfromvalve_data = []
 
     def reset(self, planning_mode):
         self.control_mode = 0
@@ -1297,7 +1299,7 @@ class door_template:
         self.action_rotation_pre = np.zeros(2)
         self.action_force_pre = 0.0
         self.command_data = []
-
+        self.manipulability_data = []
         obs = self._observation()
         while self.control_mode != RL_CIRCULAR_CONTROL:
             self.control_mode = self.controller.control_mode()
@@ -1310,7 +1312,9 @@ class door_template:
                 # self.data.ctrl[i] = 0.0
             mujoco.mj_step(self.model, self.data)
             # self.torque_data.append(self._torque[:7])
-
+            if self.control_mode == HEURISTIC_CIRCULAR_CONTROL:
+                ee = self.controller.get_ee()
+                self.save_frame_data(ee)
             if duration == 10:
                 duration = 0
                 obs = self._observation()
@@ -1353,12 +1357,15 @@ class door_template:
             for i in range(self.dof - 1):
                 self.data.ctrl[i] = self._torque[i]
             mujoco.mj_step(self.model, self.data)
+            ee = self.controller.get_ee()
+            self.save_frame_data(ee)
             # self.torque_data.append(self._torque[:7])
             # if abs(self._torque[3]) > 30:
             #     print(self._torque[:7])
             #     print(self._torque[:7])
-            # J = self.controller.get_jacobian()
-            # self.manipulability = tools.calc_manipulability(np.array(J))
+            J = self.controller.get_jacobian()
+            manipulability = tools.calc_manipulability(np.array(J))
+            self.manipulability_data.append([self.door_angle, manipulability])
             if self.rendering:
                 self.render()
         obs = self._observation()
@@ -1424,6 +1431,7 @@ class door_template:
         else:
             if len(self.grasp_list) <= 2:
                 self.deviation_done = True
+                # self.deviation_done =False
                 # pass
         self.time_done = self.data.time - self.start_time >= self.episode_time
         if self.time_done or self.bound_done or self.deviation_done:
@@ -1508,6 +1516,9 @@ class door_template:
 
     def save_frame_data(self, ee):
         r = R.from_euler('xyz', ee[1][3:6], degrees=False)
+        self.obj_rotation = np.array([[1,0,0],[0,1,0],[0,0,1]])
+        self.T_vv = np.array([[1,0,0],[0,1,0],[0,0,1]])
+        self.obj_normal = np.array([0, 0, 0.0000001])
         rpyfromvalve_rot = r.inv() * R.from_matrix(self.obj_rotation) * R.from_matrix(self.T_vv)
         ee_align = R.from_euler('z', 45, degrees=True)
         rpyfromvalve = (ee_align * rpyfromvalve_rot).as_matrix()
@@ -1522,11 +1533,11 @@ class door_template:
         if len(self.rpyfromvalve_data) == 0:
             self.rpyfromvalve_data = rpyfromvalve.reshape(1, 3, 3)
             self.xyzfromvalve_data = xyzfromvalve[0:3].reshape(1, 3)
-            self.gripper_data = ee[2]
+            # self.gripper_data = ee[2]
         else:
             self.rpyfromvalve_data = np.concatenate([self.rpyfromvalve_data, [rpyfromvalve]], axis=0)
             self.xyzfromvalve_data = np.concatenate([self.xyzfromvalve_data, [xyzfromvalve[0:3].reshape(3)]], axis=0)
-            self.gripper_data = np.concatenate([self.gripper_data, ee[2]], axis=0)
+            # self.gripper_data = np.concatenate([self.gripper_data, ee[2]], axis=0)
 
     def read_file(self):
         with open(
@@ -2111,6 +2122,7 @@ class door_env1(door_template):
 
 class door_env2(door_template):
     def _reward(self, action_rotation, action_force):
+        # print(action_force)
         reward_force = -sum(abs(action_force-self.action_force_pre))
         # reward_rotation = 1
         reward_rotation = 1-sum(abs(action_rotation - self.action_rotation_pre))
