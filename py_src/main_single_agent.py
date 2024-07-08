@@ -50,9 +50,9 @@ def main(PATH, TRAIN, RENDERING):
     action_dim2 = env.force_action_space.shape[0]
 
     replay_buffer1 = structures.ReplayBuffer((env.len_hist,state_dim), action_dim1+action_dim2)
-    actor1 = Actor(state_dim, action_dim1+action_dim2, IsDemo).to(DEVICE)
+    actor1 = Actor(state_dim, action_dim1+action_dim2, IsDemo=False).to(DEVICE)
 
-    critic1 = Critic(state_dim, action_dim1+action_dim2, policy_kwargs["n_quantiles"], policy_kwargs["n_critics"],IsDemo).to(DEVICE)
+    critic1 = Critic(state_dim, action_dim1+action_dim2, policy_kwargs["n_quantiles"], policy_kwargs["n_critics"],IsDemo=False).to(DEVICE)
     critic_target1 = copy.deepcopy(critic1)
 
     trainer1 = Trainer(actor=actor1,
@@ -74,21 +74,22 @@ def main(PATH, TRAIN, RENDERING):
         # trainer.load(pretrained_model_dir)
 
         actor1.train()
-        actor2.train()
+        # actor2.train()
         return_rotation_max = 100
         return_force_max = 100
         for t in range(int(max_timesteps)):
 
-            action_rotation = actor1.select_action(state)
-            action_force = actor2.select_action(state)
-
+            action = actor1.select_action(state)
+            # action_force = actor2.select_action(state)
+            action_rotation = action[:2]
+            action_force = np.array([action[2]])
 
             next_state, reward_rotation, reward_force, done, _ = env.step(action_rotation, action_force)
 
             episode_timesteps += 1
 
-            replay_buffer1.add(state, action_rotation, next_state, reward_rotation, done)
-            replay_buffer2.add(state, action_force, next_state, reward_force, done)
+            replay_buffer1.add(state, action, next_state, reward_rotation+reward_force, done)
+            # replay_buffer2.add(state, action_force, next_state, reward_force, done)
 
             state = next_state
             episode_return_rotation += reward_rotation
@@ -96,13 +97,7 @@ def main(PATH, TRAIN, RENDERING):
 
             # Train agent after collecting sufficient data
             if t >= batch_size:
-                if IsDemo:
-                    trainer1.train_with_demo(replay_buffer1, replay_buffer1_expert, batch_size)
-                    trainer2.train_with_demo(replay_buffer2, replay_buffer2_expert, batch_size)
-
-                else:
-                    trainer1.train(replay_buffer1, batch_size)
-                    trainer2.train(replay_buffer2, batch_size)
+                trainer1.train(replay_buffer1, batch_size)
             if (t + 1) % save_freq == 0:
                 save_flag = True
             if done:
@@ -115,10 +110,10 @@ def main(PATH, TRAIN, RENDERING):
                 if t > save_freq and episode_return_rotation > return_rotation_max and episode_return_force > return_force_max:
                     return_rotation_max = episode_return_rotation
                     return_force_max = episode_return_force
-                    path1 = models_dir + "best/rotation/"
-                    path2 = models_dir + "best/force/"
+                    path1 = models_dir + "best/"
+                    # path2 = models_dir + "best/force/"
                     trainer1.save(path1)
-                    trainer2.save(path2)
+                    # trainer2.save(path2)
                 # Reset environment
                 state = env.reset(PLANNING_MODE)
                 episode_data.append([episode_num, episode_timesteps, episode_return_rotation, episode_return_force])
@@ -139,10 +134,10 @@ def main(PATH, TRAIN, RENDERING):
                 np.save(models_dir + "avg_reward.npy", timestep_data)
 
             if save_flag:
-                path1 = models_dir + str((t + 1) // save_freq) + "/rotation/"
-                path2 = models_dir + str((t + 1) // save_freq) + "/force/"
+                path1 = models_dir + str((t + 1) // save_freq) + "/"
+                # path2 = models_dir + str((t + 1) // save_freq) + "/force/"
                 trainer1.save(path1)
-                trainer2.save(path2)
+                # trainer2.save(path2)
 
                 np.save(models_dir + "reward.npy", episode_data)
                 save_flag = False
@@ -155,10 +150,10 @@ def main(PATH, TRAIN, RENDERING):
         critic1.eval()
         actor1.training = False
 
-        trainer2.load(pretrained_model_dir2)
-        actor2.eval()
-        critic2.eval()
-        actor2.training = False
+        # trainer2.load(pretrained_model_dir2)
+        # actor2.eval()
+        # critic2.eval()
+        # actor2.training = False
 
         # reset_agent.training = False
         num_ep = 2
@@ -177,9 +172,10 @@ def main(PATH, TRAIN, RENDERING):
             while not done:
 
                 step_cnt += 1
-                action_rotation = actor1.select_action(state)
-                action_force = actor2.select_action(state)
-
+                action = actor1.select_action(state)
+                # action_force = actor2.select_action(state)
+                action_rotation = action[:2]
+                action_force = np.array([action[2]])
                 next_state, reward_rotation, reward_force, done, _ = env.step(action_rotation, action_force)
                 force_data.append(env.force)
                 reward_data.append([reward_rotation, reward_force])
@@ -234,7 +230,7 @@ if __name__ == "__main__":
     parser.add_argument("--path", help="data load path", default=" ./log/0607_1/")
     parser.add_argument("--train", help="0->test,  1->train", type=int, default=1)
     parser.add_argument("--render", help="0->no rendering,  1->rendering", type=int, default=0)
-    parser.add_argument("--offline", help="0->no offline data,  1->with offline data", type=int, default=0)
+    # parser.add_argument("--offline", help="0->no offline data,  1->with offline data", type=int, default=0)
     args = parser.parse_args()
     args_dict = vars(args)
     if args.train == 1:
@@ -249,4 +245,4 @@ if __name__ == "__main__":
         print(f"{key} : {value}")
     print("------------------------------------")
 
-    main(PATH=args.path, TRAIN=args.train, OFFLINE=args.offline, RENDERING=args.render)
+    main(PATH=args.path, TRAIN=args.train,  RENDERING=args.render)
